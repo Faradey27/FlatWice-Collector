@@ -1,0 +1,25 @@
+{
+  "name": "flatwice-collector",
+  "version": "0.0.1",
+  "description": "Small engine the goal of which is to collect data about flats from some resources",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Faradey27/FlatWice-Collector.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Faradey27/FlatWice-Collector/issues"
+  },
+  "homepage": "https://github.com/Faradey27/FlatWice-Collector#readme",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "needle": "^2.0.1",
+    "nightmare": "^2.10.0",
+    "tress": "^1.0.5"
+  }
+}
