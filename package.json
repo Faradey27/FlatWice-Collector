@@ -4,22 +4,27 @@
   "description": "Small engine the goal of which is to collect data about flats from some resources",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "babel-node ./src/index"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Faradey27/FlatWice-Collector.git"
   },
   "author": "",
-  "license": "ISC",
   "bugs": {
     "url": "https://github.com/Faradey27/FlatWice-Collector/issues"
   },
   "homepage": "https://github.com/Faradey27/FlatWice-Collector#readme",
   "dependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-stage-0": "^6.24.1",
     "cheerio": "^1.0.0-rc.2",
     "needle": "^2.0.1",
     "nightmare": "^2.10.0",
+    "node-status": "^1.0.0",
     "tress": "^1.0.5"
   }
 }
