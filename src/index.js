@@ -5,31 +5,22 @@ const Nightmare = require('nightmare');
 const resolve = require('url').resolve;
 const fs = require('fs');
 
+const OlxApartmentPage = require('./page_resources/olx/olxApartmentPage');
+
 const BASIC_URL = 'https://www.olx.ua/nedvizhimost/arenda-kvartir/kiev/';
 const NUMBER_OF_QUEUES = 10;
 const results = [];
 
-const saveInfoAboutPage = function($, title, numberOfPhone) {
-  const description = $('.clr p').text();
-  const region = $('.show-map-link').text();
-  const countRoom = $('.details > tbody > tr:nth-child(2) > td:nth-child(1) > table > tbody > tr > td > strong').text();
+const saveInfoAboutPage = function(olx, numberOfPhone) {
+  const apartmentData = olx.scrapeInfoFromApartmentPage();
+  const data = Object.assign({}, apartmentData, { numberOfPhone });
 
-  let listOfPhoto = [];
-  $('.img-item .photo-glow img').each(function() {
-    listOfPhoto.push($(this).attr('src'));
-  });
-  console.log('RESULT:', numberOfPhone);
-  results.push({
-    title: title.replace(/\n/g, '').trim(),
-    date: description.replace(/\n/g, '').trim(),
-    countRoom: countRoom.trim(),
-    region: region.trim(),
-    numberOfPhone,
-    listOfPhoto
-  });
+  console.log('RESULT:', numberOfPhone, data.title);
+  
+  results.push(data);
 }
 
-const analizePageWithNightmare = function($, url, title) {
+const collectMetadataAboutApartments  = function(olx, url) {
   // we need to create instance of Nightmare for every url 
   const nightmare = Nightmare({ show: false });
   return nightmare
@@ -47,7 +38,7 @@ const analizePageWithNightmare = function($, url, title) {
       return nightmare
         .end()
         .then(() => {
-          saveInfoAboutPage($, title, numberOfPhone);
+          saveInfoAboutPage(olx, numberOfPhone);
         });
     })
     .catch((error) => {
@@ -62,21 +53,22 @@ const asyncScraping = function(url, cb) {
         throw err;
       }
 
-      const $ = cheerio.load(res.body);
-      resolve($);
+      const olx = new OlxApartmentPage(res.body);
+      resolve(olx);
     });
   })
-  .then($ => {
-    const title = $('.offer-titlebox h1').text();
+  .then(olx => {
+    const title = olx.getTitleOfApartmentPage();
 
     // if we have "title", we are on page of apartment
     if (title) {
-      return analizePageWithNightmare($, url, title);
+      return collectMetadataAboutApartments (olx, url);
     } else {
       // save url for each page of apartment
-      $('.wrap .offer h3 .linkWithHash').each(function() {
-        q.push(resolve(BASIC_URL, $(this).attr('href')));
-      });
+      const putLinkInArr = function(self, $) {
+        q.push(resolve(BASIC_URL, $(self).attr('href')));
+      };
+      olx.getLinksApartment(putLinkInArr);
       return;
     }
   })
