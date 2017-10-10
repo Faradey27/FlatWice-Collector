@@ -1,88 +1,67 @@
-const needle = require('needle');
-const tress = require('tress');
-const cheerio = require('cheerio');
-const Nightmare = require('nightmare');
-const resolve = require('url').resolve;
-const fs = require('fs');
+import needle from 'needle';
+import tress from 'tress';
+import fs from 'fs';
+import progress from 'node-status';
+import Url from 'url';
+import Olx from './Resources/Olx';
 
-const OlxApartmentPage = require('./page_resources/olx/olxApartmentPage');
+const MAX_NUMBER_OF_FLATS_TO_COLLECT = 50;
+const NUMBER_OF_QUEUES = 6;
 
-const BASIC_URL = 'https://www.olx.ua/nedvizhimost/arenda-kvartir/kiev/';
-const NUMBER_OF_QUEUES = 10;
-const results = [];
+class FlatCollector {
+  flatsList = []
 
-const saveInfoAboutPage = function(olx, numberOfPhone) {
-  const apartmentData = olx.scrapeInfoFromApartmentPage();
-  const data = Object.assign({}, apartmentData, { numberOfPhone });
+  constructor() {
+    this.q = tress((url, callback) => this.collectDataAboutFlats(url, callback), NUMBER_OF_QUEUES);
+    this.q.drain = this.onDataCollectionEnd;
+    this.q.push(Olx.defaultUrl);
+  }
 
-  console.log('RESULT:', numberOfPhone, data.title);
-  
-  results.push(data);
-}
+  showProgressBar(max = MAX_NUMBER_OF_FLATS_TO_COLLECT) {
+    this.totalNumberOfFlats = max;
+    this.flatsProgress = progress.addItem('flat', {max: this.totalNumberOfFlats});
+    progress.start({ pattern: 'Collection data: {uptime}  |  {spinner.cyan}  |  {flat.bar}'});
+  }
 
-const collectMetadataAboutApartments  = function(olx, url) {
-  // we need to create instance of Nightmare for every url 
-  const nightmare = Nightmare({ show: false });
-  return nightmare
-    .goto(url)
-    .viewport(1500, 1500)
-    .scrollTo(300, 0)
-    .click('#contact_methods > li:nth-child(2) > div > span')
-    .wait('#contact_methods .activated strong.xx-large')
-    .evaluate(() => {
-      return document.querySelectorAll('#contact_methods .activated strong.xx-large')[0].innerText;
-    })
-    .then((numberOfPhone) => {
-      // need use nightmare into "then"
-      // otherwise, we can't use "end" after "then"
-      return nightmare
-        .end()
-        .then(() => {
-          saveInfoAboutPage(olx, numberOfPhone);
-        });
-    })
-    .catch((error) => {
-      console.error('Search failed:', error);
+  addFlatToList = async (olx, url) => {
+    this.flatsProgress.inc(); // log progress
+    const apartmentData = await olx.scrapeInfoAboutFlat(url);
+    this.flatsList.push(apartmentData);
+  }
+
+  onDataCollectionEnd = () => {
+    this.flatsProgress.inc(51);
+    fs.writeFileSync('./results.json', JSON.stringify(this.flatsList, null, 4));
+    process.exit(0);
+  }
+
+  loadPage = (url) => {
+    return new Promise((resolve, reject) => {
+      needle.get(url, (err, res) => {
+        if (err) {
+          reject(err);
+        };
+        resolve(res.body);
+      })
     });
-}
+  }
 
-const asyncScraping = function(url, cb) {
-  new Promise((resolve) => {
-    needle.get(url, (err, res) => {
-      if (err) {
-        throw err;
-      }
-
-      const olx = new OlxApartmentPage(res.body);
-      resolve(olx);
-    });
-  })
-  .then(olx => {
-    const title = olx.getTitleOfApartmentPage();
+  collectDataAboutFlats = async (url, cb) => {
+    const pageBody = await this.loadPage(url);
+    const olx = new Olx(pageBody);
+    const title = olx.title;
 
     // if we have "title", we are on page of apartment
     if (title) {
-      return collectMetadataAboutApartments (olx, url);
+      await this.addFlatToList(olx, url);
     } else {
-      // save url for each page of apartment
-      const putLinkInArr = function(self, $) {
-        q.push(resolve(BASIC_URL, $(self).attr('href')));
-      };
-      olx.getLinksApartment(putLinkInArr);
-      return;
+      olx.listOfLinksToFlats
+        .map(href => Url.resolve(Olx.defaultUrl, href))
+        .forEach(relativeHref => this.q.push(relativeHref))
     }
-  })
-  .then(() => {
     cb();
-  });
+  }
 }
 
-const q = tress((url, callback) => {
-  asyncScraping(url, callback);
-}, NUMBER_OF_QUEUES);
-
-q.drain = function() {
-  require('fs').writeFileSync('./results.json', JSON.stringify(results, null, 4));
-}
-
-q.push(BASIC_URL);
+const flatCollector = new FlatCollector();
+flatCollector.showProgressBar();
