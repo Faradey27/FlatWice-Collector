@@ -6,7 +6,7 @@ import Url from 'url';
 import Olx from './Resources/Olx';
 
 const MAX_NUMBER_OF_FLATS_TO_COLLECT = 50;
-const NUMBER_OF_QUEUES = 2;
+const NUMBER_OF_QUEUES = 6;
 
 class FlatCollector {
   flatsList = []
@@ -47,20 +47,19 @@ class FlatCollector {
   }
 
   collectDataAboutFlats = async (url, cb) => {
-    this.loadPage(url).then(pageBody => {
-      const olx = new Olx(pageBody);
-      const title = olx.title;
+    const pageBody = await this.loadPage(url);
+    const olx = new Olx(pageBody);
+    const title = olx.title;
 
-      // if we have "title", we are on page of apartment
-      if (title) {
-        return this.addFlatToList(olx, url);
-      } else {
-        return olx.listOfLinksToFlats
-          .map(href => Url.resolve(Olx.defaultUrl, href))
-          .forEach(relativeHref => this.q.push(relativeHref))
-      }
-    })
-    .then(() => cb());
+    // if we have "title", we are on page of apartment
+    if (title) {
+      await this.addFlatToList(olx, url);
+    } else {
+      olx.listOfLinksToFlats
+        .map(href => Url.resolve(Olx.defaultUrl, href))
+        .forEach(relativeHref => this.q.push(relativeHref))
+    }
+    cb();
   }
 }
 

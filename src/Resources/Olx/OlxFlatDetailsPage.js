@@ -37,7 +37,11 @@ class OlxFlatDetailsPage {
         .click('#contact_methods > li:nth-child(2) > div > span')
         .wait('#contact_methods .activated strong.xx-large')
         .evaluate(() => document.querySelectorAll('#contact_methods .activated strong.xx-large')[0].innerText)
-        .then((numberOfPhone) => nightmare.end().then(() => resolve(numberOfPhone)))
+        .then((numberOfPhone) => {
+          // need use nightmare into "then"
+          // otherwise, we can't use "end" after "then"
+          return nightmare.end().then(() => resolve(numberOfPhone));
+        })
         .catch((error) => reject(error));
     });
   }
