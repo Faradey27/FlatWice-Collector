@@ -13,6 +13,10 @@ class Olx {
     return this.$('.offer-titlebox h1').text();
   }
 
+  get countPages() {
+    return this.$('.item.fleft:nth-last-child(2) a span').text();
+  }
+
   get listOfLinksToFlats() {
     return this.$('.wrap .offer h3 .linkWithHash').map((index, element) => this.$(element).attr('href')).get();
   }
