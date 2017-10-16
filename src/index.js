@@ -5,8 +5,10 @@ import progress from 'node-status';
 import Url from 'url';
 import Olx from './Resources/Olx';
 
-const MAX_NUMBER_OF_FLATS_TO_COLLECT = 50;
-const NUMBER_OF_QUEUES = 6;
+const MAX_NUMBER_OF_FLATS_TO_COLLECT = 100;
+const NUMBER_OF_QUEUES = 1;
+const INITIAL_PAGE_OF_FLAT_LIST = 2;
+const NUMBER_OF_PAGES = 2;
 
 class FlatCollector {
   flatsList = []
@@ -15,6 +17,7 @@ class FlatCollector {
     this.q = tress((url, callback) => this.collectDataAboutFlats(url, callback), NUMBER_OF_QUEUES);
     this.q.drain = this.onDataCollectionEnd;
     this.q.push(Olx.defaultUrl);
+    this.isNeedNextFlatsList = true;
   }
 
   showProgressBar(max = MAX_NUMBER_OF_FLATS_TO_COLLECT) {
@@ -41,9 +44,20 @@ class FlatCollector {
         if (err) {
           reject(err);
         };
-        resolve(res.body);
+
+        const body = res && res.body;
+        resolve(body);
       })
     });
+  }
+
+  addNextPageOfFlatList(olx, countPages) {
+    if (this.isNeedNextFlatsList) {
+      for(let page = INITIAL_PAGE_OF_FLAT_LIST; page <= NUMBER_OF_PAGES; page++) {
+        this.q.push(`${Olx.defaultUrl}?page=${page}`)
+      }
+      this.isNeedNextFlatsList = false;
+    }
   }
 
   collectDataAboutFlats = async (url, cb) => {
@@ -55,9 +69,10 @@ class FlatCollector {
     if (title) {
       await this.addFlatToList(olx, url);
     } else {
+      this.addNextPageOfFlatList(olx, NUMBER_OF_PAGES);
       olx.listOfLinksToFlats
         .map(href => Url.resolve(Olx.defaultUrl, href))
-        .forEach(relativeHref => this.q.push(relativeHref))
+        .forEach(relativeHref => this.q.push(relativeHref));
     }
     cb();
   }
